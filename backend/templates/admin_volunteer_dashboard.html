@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Volunteer Management (Admin){% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card bg-dark text-white">
+            <div class="card-body d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0"><i class="bi bi-shield-lock"></i> Admin: Volunteer Management</h2>
+                    <p class="mb-0">Assign, reassign, or unassign tasks to volunteers.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Unassigned Tasks -->
+    <div class="col-md-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-inbox"></i> Unassigned Approved Tasks</h5>
+            </div>
+            <div class="card-body">
+                {% if unassigned_tasks %}
+                <div class="list-group">
+                    {% for task in unassigned_tasks %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ task.resource.name }} ({{ task.quantity }} {{ task.resource.unit }})</h6>
+                            <span class="badge bg-{{ 'danger' if task.urgency == 'Critical' else 'warning' }}">{{ task.urgency }}</span>
+                        </div>
+                        <p class="mb-1 small">
+                            <strong>Location:</strong> {{ task.event.name }}<br>
+                            <strong>Requested by:</strong> {{ task.user.name }}
+                        </p>
+                        <form method="POST" action="{{ url_for('volunteer.admin_assign_task') }}" class="d-flex mt-2">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <input type="hidden" name="request_id" value="{{ task.id }}">
+                            <select name="volunteer_id" class="form-select form-select-sm me-2" required>
+                                <option value="">-- Assign to Volunteer --</option>
+                                {% for vol in volunteers %}
+                                    <option value="{{ vol.id }}">{{ vol.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" class="btn btn-sm btn-primary">Assign</button>
+                        </form>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <p>No unassigned approved tasks.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Assignments -->
+    <div class="col-md-7 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> Manage Assignments</h5>
+            </div>
+            <div class="card-body">
+                {% if assignments %}
+                <div class="list-group">
+                    {% for assignment in assignments %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                Volunteer: <strong>{{ assignment.user.name }}</strong>
+                            </h6>
+                            <span class="badge bg-{{ 'success' if assignment.status == 'Completed' else 'secondary' if assignment.status == 'Rejected' else 'warning' if assignment.status == 'Not Completed' else 'primary' }}">
+                                {{ assignment.status }}
+                            </span>
+                        </div>
+                        <p class="mb-1 small">
+                            <strong>Task:</strong> {{ assignment.request_obj.resource.name }} ({{ assignment.request_obj.quantity }} {{ assignment.request_obj.resource.unit }})<br>
+                            <strong>Location:</strong> {{ assignment.request_obj.event.name }}
+                        </p>
+                        
+                        <div class="mt-2 d-flex gap-2">
+                            {% if assignment.status not in ['Completed', 'Rejected'] %}
+                                <!-- Reassign Form -->
+                                <form method="POST" action="{{ url_for('volunteer.admin_reassign_task', assignment_id=assignment.id) }}" class="d-flex align-items-center">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <select name="volunteer_id" class="form-select form-select-sm me-2" required style="width: auto;">
+                                        <option value="">-- Reassign --</option>
+                                        {% for vol in volunteers %}
+                                            {% if vol.id != assignment.user_id %}
+                                                <option value="{{ vol.id }}">{{ vol.name }}</option>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                    <button type="submit" class="btn btn-sm btn-warning">Reassign</button>
+                                </form>
+                                
+                                <!-- Unassign Form -->
+                                <form method="POST" action="{{ url_for('volunteer.admin_unassign_task', assignment_id=assignment.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to unassign this task?');">Unassign</button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <p>No assignments yet.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

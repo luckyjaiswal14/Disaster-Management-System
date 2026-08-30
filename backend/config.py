@@ -16,8 +16,13 @@ class Config:
         SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}/{DB_NAME}'
     else:
         # Default to SQLite for easy local execution
-        basedir = os.path.abspath(os.path.dirname(__file__))
-        SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'disaster.db')
+        if os.environ.get('RENDER'):
+            # Use Render's persistent disk path
+            SQLALCHEMY_DATABASE_URI = 'sqlite:////var/data/disaster.db'
+        else:
+            basedir = os.path.abspath(os.path.dirname(__file__))
+            SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'disaster.db')
+            
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
     # Session

@@ -93,6 +93,7 @@
                             </p>
                             <div class="btn-group btn-group-sm mt-2">
                                 <form method="POST" action="/admin/request/{{ req.id }}/approve" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-success btn-sm" 
                                             {% if req.quantity > req.resource.available_quantity %}disabled title="Insufficient quantity"{% endif %}>
                                         <i class="bi bi-check-lg"></i> Approve
@@ -115,6 +116,7 @@
                                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                                         </div>
                                         <form method="POST" action="/admin/request/{{ req.id }}/reject">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                             <div class="modal-body">
                                                 <p>Reject request from <strong>{{ req.user.name }}</strong> for {{ req.quantity }} {{ req.resource.unit }} of {{ req.resource.name }}?</p>
                                                 <div class="mb-3">
@@ -200,7 +202,8 @@
     </div>
 </div>
 
-<div class="row mt-2">
+
+    <div class="row mt-2">
     <!-- Recent Donations -->
     <div class="col-md-6 mb-4">
         <div class="card">
@@ -281,6 +284,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="/admin/resource/add">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Resource Name</label>

@@ -17,7 +17,7 @@ def create_app(config_class=Config):
     db.init_app(app)
     login_manager.init_app(app)
     migrate.init_app(app, db)
-    # csrf.init_app(app) # Enable if CSRF needed globally, but might need template adjustments
+    csrf.init_app(app)
     
     # Register Blueprints
     from routes.auth import auth_bp
@@ -38,21 +38,17 @@ def create_app(config_class=Config):
     return app
 
 def setup_database(app):
-    """Setup database with sample data"""
+    """Initialize the database and create sample data if empty"""
     with app.app_context():
         try:
-            # Create all tables
             db.create_all()
-            print("✅ Database tables created successfully!")
-            
-            # Check if we need to create sample data
-            if not User.query.filter_by(email='admin@disaster.org').first():
+            from models import User
+            if not User.query.first():
                 print("Creating sample data...")
                 create_sample_data()
                 print("✅ Sample data created successfully!")
             else:
                 print("✅ Database already has sample data")
-                
         except Exception as e:
             print(f"❌ Error setting up database: {e}")
 
@@ -91,6 +87,31 @@ def create_sample_data():
     
     db.session.add_all([admin, user1, user2, event1, event2] + resources)
     db.session.commit()
+
+    # Create sample requests and volunteer assignments so the UI isn't empty
+    from models import Request, VolunteerAssignment
+    import datetime
+    
+    # 1. Pending Request
+    req1 = Request(user_id=user1.id, resource_id=resources[0].id, event_id=event1.id, quantity=10, urgency='High', status='Pending')
+    
+    # 2. Approved Request (unassigned, visible to Volunteers to accept, and Admin to assign)
+    req2 = Request(user_id=user2.id, resource_id=resources[1].id, event_id=event2.id, quantity=5, urgency='Critical', status='Approved')
+    
+    # 3. Assigned/In Progress Request
+    req3 = Request(user_id=user1.id, resource_id=resources[2].id, event_id=event1.id, quantity=2, urgency='Medium', status='Approved')
+    
+    db.session.add_all([req1, req2, req3])
+    db.session.commit()
+    
+    # Make user2 a volunteer
+    user2.is_volunteer = True
+    
+    # Assign req3 to user2
+    assignment1 = VolunteerAssignment(user_id=user2.id, request_id=req3.id, status='In Progress')
+    db.session.add(assignment1)
+    db.session.commit()
+
 
 if __name__ == '__main__':
     app = create_app()

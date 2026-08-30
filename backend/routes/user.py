@@ -2,12 +2,11 @@
 User-facing routes for dashboard, donations, requests, and map interactions.
 Provides relief coordination functionality for regular users.
 """
-from flask import Blueprint, render_template, request, jsonify, flash
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
 from flask_login import login_required, current_user
 from extensions import db
 from models import User, Event, Resource, Donation, Request
 from sqlalchemy.exc import SQLAlchemyError
-import json
 
 user_bp = Blueprint('user', __name__)
 
@@ -57,6 +56,12 @@ def get_resources():
     
     return jsonify(resources_data)
 
+def handle_error_response(msg, status_code):
+    if request.is_json:
+        return jsonify({'error': msg}), status_code
+    flash(msg, 'danger')
+    return redirect(url_for('user.dashboard'))
+
 @user_bp.route('/donate', methods=['POST'])
 @login_required
 def donate():
@@ -69,15 +74,19 @@ def donate():
         notes = data.get('notes', '')
         
         if not resource_id or not quantity:
-            return jsonify({'error': 'Resource and quantity are required'}), 400
+            return handle_error_response('Resource and quantity are required', 400)
         
         try:
             resource_id = int(resource_id)
             quantity = int(quantity)
             if quantity <= 0:
-                return jsonify({'error': 'Quantity must be positive'}), 400
+                return handle_error_response('Quantity must be positive', 400)
+            if event_id:
+                event_id = int(event_id)
+            else:
+                event_id = None
         except ValueError:
-            return jsonify({'error': 'Invalid quantity format'}), 400
+            return handle_error_response('Invalid quantity or format', 400)
         
         # Start transaction
         db.session.begin_nested()
@@ -86,7 +95,7 @@ def donate():
         resource = Resource.query.get(resource_id)
         if not resource:
             db.session.rollback()
-            return jsonify({'error': 'Resource not found'}), 404
+            return handle_error_response('Resource not found', 404)
         
         # Create donation
         donation = Donation(
@@ -99,25 +108,29 @@ def donate():
         
         db.session.add(donation)
         
-        # Update resource quantities (trigger will handle this, but we do it here too for consistency)
+        # Update resource quantities in Python instead of DB trigger for SQLite compatibility
         resource.total_quantity += quantity
         resource.available_quantity += quantity
         
         db.session.commit()
         
-        return jsonify({
-            'message': 'Donation successful',
-            'donation_id': donation.id
-        }), 201
+        if request.is_json:
+            return jsonify({
+                'message': 'Donation successful',
+                'donation_id': donation.id
+            }), 201
+        
+        flash('Donation successful! Thank you.', 'success')
+        return redirect(url_for('user.dashboard'))
         
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({'error': 'Donation failed due to database error'}), 500
+        return handle_error_response('Donation failed due to database error', 500)
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Donation failed'}), 500
+        return handle_error_response('Donation failed', 500)
 
-@user_bp.route('/requests', methods=['POST'])
+@user_bp.route('/request', methods=['POST'])
 @login_required
 def create_request():
     """Create resource request with availability validation"""
@@ -129,27 +142,27 @@ def create_request():
         urgency = data.get('urgency', 'Medium')
         
         if not all([resource_id, event_id, quantity]):
-            return jsonify({'error': 'Resource, event, and quantity are required'}), 400
+            return handle_error_response('Resource, event, and quantity are required', 400)
         
         try:
             resource_id = int(resource_id)
             event_id = int(event_id)
             quantity = int(quantity)
             if quantity <= 0:
-                return jsonify({'error': 'Quantity must be positive'}), 400
+                return handle_error_response('Quantity must be positive', 400)
         except ValueError:
-            return jsonify({'error': 'Invalid input format'}), 400
+            return handle_error_response('Invalid input format', 400)
         
         # Check resource and event exist
         resource = Resource.query.get(resource_id)
         event = Event.query.get(event_id)
         
         if not resource:
-            return jsonify({'error': 'Resource not found'}), 404
+            return handle_error_response('Resource not found', 404)
         if not event:
-            return jsonify({'error': 'Event not found'}), 404
+            return handle_error_response('Event not found', 404)
         
-        # Create request (availability check happens in trigger)
+        # Create request 
         request_obj = Request(
             user_id=current_user.id,
             resource_id=resource_id,
@@ -161,17 +174,21 @@ def create_request():
         db.session.add(request_obj)
         db.session.commit()
         
-        return jsonify({
-            'message': 'Request submitted successfully',
-            'request_id': request_obj.id
-        }), 201
+        if request.is_json:
+            return jsonify({
+                'message': 'Request submitted successfully',
+                'request_id': request_obj.id
+            }), 201
+            
+        flash('Resource request submitted successfully', 'success')
+        return redirect(url_for('user.dashboard'))
         
     except SQLAlchemyError as e:
         db.session.rollback()
-        return jsonify({'error': 'Request creation failed'}), 500
+        return handle_error_response('Request creation failed', 500)
     except Exception as e:
         db.session.rollback()
-        return jsonify({'error': 'Request creation failed'}), 500
+        return handle_error_response('Request creation failed', 500)
 
 @user_bp.route('/requests/<int:request_id>')
 @login_required

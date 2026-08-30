@@ -41,7 +41,7 @@ def test_create_request(client, app):
         resource = Resource.query.first()
         event = Event.query.first()
         
-        response = client.post('/user/requests', json={
+        response = client.post('/user/request', json={
             'resource_id': resource.id,
             'event_id': event.id,
             'quantity': 5,

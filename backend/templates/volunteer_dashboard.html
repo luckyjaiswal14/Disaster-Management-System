@@ -23,7 +23,7 @@
 
 <div class="row">
     <!-- Available Tasks -->
-    <div class="col-md-6 mb-4">
+    <div class="col-md-5 mb-4">
         <div class="card h-100">
             <div class="card-header bg-light">
                 <h5 class="mb-0"><i class="bi bi-inbox"></i> Available Tasks</h5>
@@ -34,21 +34,17 @@
                     {% for task in available_tasks %}
                     <div class="list-group-item">
                         <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">{{ task.resource.name }} ({{ task.quantity }} {{ task.resource.unit }})
-                            </h6>
-                            <span class="badge bg-{{ 'danger' if task.urgency == 'Critical' else 'warning' }}">
-                                {{ task.urgency }}
-                            </span>
+                            <h6 class="mb-1">{{ task.resource.name }} ({{ task.quantity }} {{ task.resource.unit }})</h6>
+                            <span class="badge bg-{{ 'danger' if task.urgency == 'Critical' else 'warning' }}">{{ task.urgency }}</span>
                         </div>
-                        <p class="mb-1">
+                        <p class="mb-1 small">
                             <strong>Location:</strong> {{ task.event.name }}
                         </p>
                         <div class="d-flex justify-content-between align-items-center mt-2">
                             <small class="text-muted">Requested by: {{ task.user.name }}</small>
-                            <form action="{{ url_for('volunteer.accept_task', request_id=task.id) }}" method="POST">
-                                <button type="submit" class="btn btn-sm btn-outline-success">
-                                    Accept Task
-                                </button>
+                            <form action="{{ url_for('volunteer.accept_available_task', request_id=task.id) }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-sm btn-outline-success">Accept Task</button>
                             </form>
                         </div>
                     </div>
@@ -65,7 +61,7 @@
     </div>
 
     <!-- My Assignments -->
-    <div class="col-md-6 mb-4">
+    <div class="col-md-7 mb-4">
         <div class="card h-100">
             <div class="card-header bg-light">
                 <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> My Assignments</h5>
@@ -74,7 +70,7 @@
                 {% if my_assignments %}
                 <div class="list-group">
                     {% for assignment in my_assignments %}
-                    <div class="list-group-item {{ 'list-group-item-success' if assignment.status == 'Completed' }}">
+                    <div class="list-group-item {{ 'list-group-item-success' if assignment.status == 'Completed' else 'list-group-item-warning' if assignment.status == 'Pending Acceptance' }}">
                         <div class="d-flex w-100 justify-content-between">
                             <h6 class="mb-1">
                                 {% if assignment.status == 'Completed' %}
@@ -82,7 +78,7 @@
                                 {% endif %}
                                 {{ assignment.request_obj.resource.name }}
                             </h6>
-                            <span class="badge bg-{{ 'success' if assignment.status == 'Completed' else 'primary' }}">
+                            <span class="badge bg-{{ 'success' if assignment.status == 'Completed' else 'warning' if assignment.status == 'Pending Acceptance' else 'danger' if assignment.status == 'Rejected' else 'secondary' if assignment.status == 'Not Completed' else 'primary' }}">
                                 {{ assignment.status }}
                             </span>
                         </div>
@@ -91,23 +87,30 @@
                             Quantity: {{ assignment.request_obj.quantity }} {{ assignment.request_obj.resource.unit }}
                         </p>
 
-                        {% if assignment.status == 'In Progress' %}
-                        <form action="{{ url_for('volunteer.complete_task', assignment_id=assignment.id) }}"
-                            method="POST" class="mt-2">
-                            <button type="submit" class="btn btn-sm btn-success w-100">
-                                Mark as Completed
-                            </button>
-                        </form>
-                        {% else %}
-                        <small class="text-muted">Completed on {{ assignment.completed_at.strftime('%Y-%m-%d %H:%M')
-                            }}</small>
+                        <div class="mt-2">
+                            <form action="{{ url_for('volunteer.update_assignment_status', assignment_id=assignment.id) }}" method="POST" class="d-flex gap-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                
+                                {% if assignment.status == 'Pending Acceptance' %}
+                                    <button type="submit" name="action" value="Accept" class="btn btn-sm btn-success">Accept</button>
+                                    <button type="submit" name="action" value="Reject" class="btn btn-sm btn-danger">Reject</button>
+                                {% elif assignment.status == 'In Progress' %}
+                                    <button type="submit" name="action" value="Completed" class="btn btn-sm btn-success">Mark Completed</button>
+                                    <button type="submit" name="action" value="Not Completed" class="btn btn-sm btn-warning">Not Completed</button>
+                                {% elif assignment.status in ['Completed', 'Not Completed'] %}
+                                    <button type="submit" name="action" value="In Progress" class="btn btn-sm btn-outline-primary">Revert to In Progress</button>
+                                {% endif %}
+                            </form>
+                        </div>
+                        {% if assignment.status == 'Completed' and assignment.completed_at %}
+                        <small class="text-muted d-block mt-2">Completed on {{ assignment.completed_at.strftime('%Y-%m-%d %H:%M') }}</small>
                         {% endif %}
                     </div>
                     {% endfor %}
                 </div>
                 {% else %}
                 <div class="text-center py-4 text-muted">
-                    <p>You haven't accepted any tasks yet.</p>
+                    <p>You have no assignments.</p>
                 </div>
                 {% endif %}
             </div>

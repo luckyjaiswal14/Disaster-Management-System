@@ -28,6 +28,7 @@
                     By clicking the button below, you agree to offer your time and skills for disaster relief.
                 </div>
                 <form action="{{ url_for('volunteer.signup') }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-success btn-lg">
                         <i class="bi bi-hand-thumbs-up"></i> Sign Me Up!
                     </button>
