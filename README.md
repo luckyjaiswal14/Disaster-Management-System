@@ -66,19 +66,36 @@ Open your browser and navigate to: **http://localhost:5001**
 
 ---
 
-## ☁️ Cloud Deployment (Render.com)
+## ☁️ Cloud Deployment (PythonAnywhere)
 
-This project is fully pre-configured to be deployed securely and reliably for free on [Render](https://render.com/).
+This project is fully pre-configured to be deployed securely and reliably for **free** on [PythonAnywhere](https://www.pythonanywhere.com/), which provides a permanent filesystem to keep your SQLite database safe.
 
-1. Log into Render and create a new **Web Service**.
-2. Connect your GitHub repository.
-3. Use the following deployment configuration:
-   - **Build Command**: `cd backend && pip install -r requirements.txt`
-   - **Start Command**: `cd backend && gunicorn "app:create_app()"`
-4. Under **Advanced**, add the following settings to ensure your SQLite database is permanent and never wiped:
-   - **Add Environment Variable** -> Key: `RENDER`, Value: `true`
-   - **Add Disk** -> Name: `database`, Mount Path: `/var/data`, Size: `1 GB`
-5. Click **Create Web Service**. Your app is now live!
+1. Create a free account on PythonAnywhere and open a **Bash** console.
+2. Clone your repository:
+   ```bash
+   git clone <your-github-url>
+   ```
+3. Set up your virtual environment and install dependencies:
+   ```bash
+   mkvirtualenv --python=/usr/bin/python3.10 venv
+   cd <your-repo-name>/backend
+   pip install -r requirements.txt
+   ```
+4. Go to the **Web** tab and click **"Add a new web app"**. Select **Manual Configuration** -> **Python 3.10**.
+5. Under the **Virtualenv** section, enter the path to your environment (e.g., `/home/yourusername/.virtualenvs/venv`).
+6. Under the **Code** section, open the **WSGI configuration file** and replace everything with:
+   ```python
+   import sys
+   import os
+
+   project_home = '/home/yourusername/<your-repo-name>/backend'
+   if project_home not in sys.path:
+       sys.path = [project_home] + sys.path
+
+   from app import create_app
+   application = create_app()
+   ```
+7. Click the green **Reload** button at the top of the Web tab. Your app is now live!
 
 ---
 
